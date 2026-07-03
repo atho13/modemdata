@@ -1,4 +1,4 @@
-name: FrdmX Build
+name: Build OpenWrt LuCI & Core Package (Fixed URL)
 
 on:
   workflow_dispatch:
@@ -26,22 +26,25 @@ jobs:
       - name: Install Build Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential gawk gcc-multilib gettext git libncurses-dev libssl-dev python3-setuptools rsync unzip zlib1g-dev file wget
+          # Menghapus python3-distutils untuk menghindari error paket kosong di Ubuntu baru
+          sudo apt-get install -y build-essential gawk gcc-multilib gettext git libncurses-dev libssl-dev rsync unzip zlib1g-dev file wget python3-setuptools
 
       - name: Download x86_64 SDK
         run: |
           VERSION="${{ github.event.inputs.openwrt_version }}"
+          
+          # Memperbaiki susunan URL unduhan OpenWrt SDK yang valid
           if [ "$VERSION" = "snapshots" ]; then
             SDK_URL="https://openwrt.org"
           else
             SDK_URL="https://openwrt.org{VERSION}/targets/x86/64/"
           fi
           
-          echo "Mengunduh SDK dari: $SDK_URL"
+          echo "Mengunduh SDK dari alamat resmi: $SDK_URL"
           SDK_FILE=$(wget -qO- "$SDK_URL" | grep -oE 'openwrt-sdk-[^"]+\.tar\.xz' | head -n 1)
           
           if [ -z "$SDK_FILE" ]; then
-            echo "ERROR: SDK Tidak ditemukan!"
+            echo "ERROR: SDK Tidak ditemukan di server OpenWrt!"
             exit 1
           fi
           
@@ -51,6 +54,7 @@ jobs:
 
       - name: Inject Custom Packages to SDK
         run: |
+          # 1. Salin aplikasi GUI milik Anda
           mkdir -p openwrt-sdk/package/luci-app-modemdata
           if [ -d "luci-app-modemdata" ]; then
             cp -r luci-app-modemdata/* openwrt-sdk/package/luci-app-modemdata/
@@ -58,7 +62,7 @@ jobs:
             cp -r * openwrt-sdk/package/luci-app-modemdata/ 2>/dev/null || true
           fi
 
-          # 2. Ambil otomatis paket CORE inti (modemdata) langsung dari repo hulu obsy / eko.one.pl
+          # 2. Ambil otomatis paket CORE inti (modemdata) dari repositori hulu obsy
           git clone https://github.com openwrt-sdk/package/modemdata
 
       - name: Update and Install Feeds
@@ -71,36 +75,36 @@ jobs:
         run: |
           cd openwrt-sdk
           make defconfig
-          # Melakukan kompilasi berurutan untuk kedua paket tersebut
+          # Proses kompilasi ganda untuk aplikasi inti dan interface webnya
           make package/modemdata/compile V=s -j$(nproc)
           make package/luci-app-modemdata/compile V=s -j$(nproc)
 
       - name: Prepare Files for Release
         run: |
           mkdir -p output_packages
-          # Mencari dan mengumpulkan semua file .ipk atau .apk dari kedua paket di atas
+          # Kumpulkan seluruh berkas berekstensi .ipk atau .apk yang berhasil diciptakan
           find openwrt-sdk/bin/ -type f \( -name "*modemdata*.ipk" -o -name "*modemdata*.apk" \) -exec cp {} output_packages/ \;
-          echo "Hasil kompilasi paket ganda:"
+          echo "Daftar berkas yang siap diunggah ke rilis:"
           ls -l output_packages/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "v1.0.31-release-${{ github.run_number }}"
-          name: "Modemdata Complete Pack - OpenWrt ${{ github.event.inputs.openwrt_version }}"
+          name: "Modemdata Pack Complete - OpenWrt ${{ github.event.inputs.openwrt_version }}"
           body: |
             Paket Komplit Universal (Architecture-Independent) siap pakai.
             
-            **Cara Instalasi di Router:**
-            1. Unduh kedua file di bawah (`modemdata` dan `luci-app-modemdata`).
-            2. Unggah ke router, lalu jalankan instalasi berurutan:
+            **Petunjuk Pemasangan pada Router:**
+            1. Unduh paket `modemdata` dan `luci-app-modemdata` di bawah.
+            2. Unggah ke dalam router, lalu ketik perintah berurutan:
                ```bash
                opkg update
                opkg install modemdata_*
                opkg install luci-app-modemdata_*
                ```
-            - **Basis Sistem**: OpenWrt ${{ github.event.inputs.openwrt_version }}
-            - File ini kompetibel langsung untuk arsitektur **x86_64**, **aarch64**, mips, dll.
+            - **Dibuat dengan Basis**: OpenWrt SDK ${{ github.event.inputs.openwrt_version }}
+            - File ini kompetibel langsung untuk arsitektur **x86_64**, **aarch64**, mips, ramips, dll.
           draft: false
           prerelease: false
           files: |
