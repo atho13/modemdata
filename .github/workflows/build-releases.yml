@@ -46,7 +46,7 @@ jobs:
 
           # 2. Ambil otomatis paket CORE dari repositori obsy
           rm -rf tmp_modemdata
-          git clone https://github.com tmp_modemdata
+          git clone https://github.com/4IceG/luci-app-modemdata tmp_modemdata
           cp -r tmp_modemdata/* openwrt-sdk/package/modemdata/
 
       - name: Update and Install Feeds
