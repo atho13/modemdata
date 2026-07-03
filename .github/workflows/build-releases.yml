@@ -20,7 +20,7 @@ jobs:
       - name: Download OpenWrt SDK
         run: |
           # Mengunci URL ke file biner asli agar tidak mengunduh halaman web HTML
-          SDK_URL="https://openwrt.org"
+          SDK_URL="https://archive.openwrt.org/releases/24.10.0/targets/armsr/armv8/openwrt-sdk-24.10.0-armsr-armv8_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
           
           echo "Mengunduh SDK dari alamat resmi: $SDK_URL"
           wget -O openwrt-sdk.tar.zst "$SDK_URL"
