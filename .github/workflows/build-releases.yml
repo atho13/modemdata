@@ -58,8 +58,7 @@ jobs:
             cp -r * openwrt-sdk/package/luci-app-modemdata/ 2>/dev/null || true
           fi
 
-          # 2. Ambil otomatis paket CORE inti (modemdata) dari repositori hulu obsy
-          git clone https://github.com openwrt-sdk/package/modemdata
+          git clone https://github.com/4IceG/luci-app-modemdata
 
       - name: Update and Install Feeds
         run: |
