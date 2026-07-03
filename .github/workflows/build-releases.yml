@@ -6,10 +6,9 @@ on:
       openwrt_version:
         description: 'Pilih Versi Basis OpenWrt'
         required: true
-        default: '23.05.5'
+        default: 'snapshots'
         type: choice
         options:
-          - '23.05.5'
           - '23.05.0'
           - '24.10.0'
           - 'snapshots'
@@ -31,26 +30,23 @@ jobs:
 
       - name: Download x86_64 SDK
         run: |
-          VERSION="${{ github.event.inputs.openwrt_version }}"
-          
-          # Memperbaiki susunan URL unduhan OpenWrt SDK yang valid
-          if [ "$VERSION" = "snapshots" ]; then
-            SDK_URL="https://archive.openwrt.org/releases/25.12.0/targets/armsr/armv8/openwrt-sdk-25.12.0-armsr-armv8_gcc-14.3.0_musl.Linux-x86_64.tar.zst"
-          else
-            SDK_URL="https://archive.openwrt.org/releases/25.12.0/targets/armsr/armv8/openwrt-sdk-25.12.0-armsr-armv8_gcc-14.3.0_musl.Linux-x86_64.tar.zst"
-          fi
+          # Install zstd terlebih dahulu karena Ubuntu membutuhkan tool tambahan untuk ekstrak .zst
+          sudo apt-get update && sudo apt-get install -y zstd
+
+          # Tautan langsung yang Anda tentukan
+          SDK_URL="https://archive.openwrt.org/releases/25.12.0/targets/armsr/armv8/openwrt-sdk-25.12.0-armsr-armv8_gcc-14.3.0_musl.Linux-x86_64.tar.zst"
           
           echo "Mengunduh SDK dari alamat resmi: $SDK_URL"
-          SDK_FILE=$(wget -qO- "$SDK_URL" | grep -oE 'openwrt-sdk-[^"]+\.tar\.xz' | head -n 1)
           
-          if [ -z "$SDK_FILE" ]; then
-            echo "ERROR: SDK Tidak ditemukan di server OpenWrt!"
-            exit 1
-          fi
+          # Unduh langsung file target
+          wget -O openwrt-sdk.tar.zst "$SDK_URL"
           
-          wget "${SDK_URL}${SDK_FILE}"
-          tar -xf "$SDK_FILE"
-          mv openwrt-sdk-* openwrt-sdk
+          # Ekstrak file berbasis .tar.zst menggunakan kombinasi zstd dan tar
+          zstd -d openwrt-sdk.tar.zst
+          tar -xf openwrt-sdk.tar
+          
+          # Rapikan nama folder agar dikenali langkah selanjutnya
+          mv openwrt-sdk-25.12.0-* openwrt-sdk
 
       - name: Inject Custom Packages to SDK
         run: |
