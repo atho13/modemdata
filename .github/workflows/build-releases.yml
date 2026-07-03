@@ -1,4 +1,4 @@
-name: Build OpenWrt LuCI & Core Package (Final Fixed)
+name: Build OpenWrt LuCI & Core Package (Absolute URL Fixed)
 
 on:
   workflow_dispatch:
@@ -15,18 +15,17 @@ jobs:
       - name: Install Build Dependencies
         run: |
           sudo apt-get update
-          # Menginstal alat esensial kompilasi dan zstd untuk mengekstrak SDK baru
           sudo apt-get install -y build-essential gawk gcc-multilib gettext git libncurses-dev libssl-dev rsync unzip zlib1g-dev file wget python3-setuptools zstd
 
       - name: Download OpenWrt SDK
         run: |
-          # Menggunakan URL arsip rilis OpenWrt terbaru yang Anda tentukan
+          # Mengunci URL ke file biner asli agar tidak mengunduh halaman web HTML
           SDK_URL="https://openwrt.org"
           
           echo "Mengunduh SDK dari alamat resmi: $SDK_URL"
           wget -O openwrt-sdk.tar.zst "$SDK_URL"
           
-          # Proses ekstrak file .tar.zst menggunakan zstd
+          # Ekstrak file biner .tar.zst menggunakan zstd
           zstd -d openwrt-sdk.tar.zst
           tar -xf openwrt-sdk.tar
           
@@ -35,19 +34,17 @@ jobs:
 
       - name: Inject Custom Packages to SDK
         run: |
-          # Membuat folder penampung paket di dalam sistem SDK
           mkdir -p openwrt-sdk/package/luci-app-modemdata
           mkdir -p openwrt-sdk/package/modemdata
 
-          # 1. Menyalin file GUI (luci-app-modemdata) dari repositori Anda saat ini
+          # 1. Salin GUI dari kode repositori Anda saat ini
           if [ -d "luci-app-modemdata" ]; then
             cp -r luci-app-modemdata/* openwrt-sdk/package/luci-app-modemdata/
           else
             cp -r * openwrt-sdk/package/luci-app-modemdata/ 2>/dev/null || true
           fi
 
-          # 2. Mengunduh paket CORE inti (modemdata) dari repositori hulu obsy
-          # Ditampung ke folder sementara terlebih dahulu agar tidak memicu error Git 128
+          # 2. Ambil otomatis paket CORE dari repositori obsy
           rm -rf tmp_modemdata
           git clone https://github.com tmp_modemdata
           cp -r tmp_modemdata/* openwrt-sdk/package/modemdata/
@@ -62,14 +59,13 @@ jobs:
         run: |
           cd openwrt-sdk
           make defconfig
-          # Memulai proses kompilasi mandiri untuk kedua paket aplikasi
+          # Proses kompilasi inti backend dan tampilan frontend web LuCI
           make package/modemdata/compile V=s -j$(nproc)
           make package/luci-app-modemdata/compile V=s -j$(nproc)
 
       - name: Prepare Files for Release
         run: |
           mkdir -p output_packages
-          # Mencari dan menyatukan seluruh file .ipk atau .apk hasil kompilasi ke satu folder
           find openwrt-sdk/bin/ -type f \( -name "*modemdata*.ipk" -o -name "*modemdata*.apk" \) -exec cp {} output_packages/ \;
           echo "Daftar berkas kemasan yang siap diterbitkan:"
           ls -l output_packages/
